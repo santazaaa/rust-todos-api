@@ -20,14 +20,21 @@ use axum::{
     http::StatusCode,
     routing::{get, patch}, Router,
 };
+use rust_todos::common::db;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::todos::model::Db;
+
+mod state;
 mod todos;
 
 #[tokio::main]
 async fn main() {
+    let dbpool = db::connect::get_connection_pool();
+    let todo_repo = todos::repo::TodoRepo::new(dbpool);
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -36,7 +43,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db = todos::model::Db::default();
+    let state = state::AppState{todo_repo, todo_db: Db::default()};
 
     // Compose the routes
     let app = Router::new()
@@ -59,7 +66,7 @@ async fn main() {
                 .layer(TraceLayer::new_for_http())
                 .into_inner(),
         )
-        .with_state(db);
+        .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await

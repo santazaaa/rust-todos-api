@@ -14,3 +14,6 @@ tower-http = { version = "0.5.0", features = ["add-extension", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.0", features = ["serde", "v4"] }
+diesel = { version = "2.1.0", features = ["postgres", "r2d2", "uuid", "chrono"] }
+dotenvy = "0.15"
+chrono = { version = "0.4.31", features = ["serde"] }

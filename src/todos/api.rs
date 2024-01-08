@@ -13,16 +13,18 @@
 //! cargo run -p example-todos
 //! ```
 
+
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
+use chrono::{Utc};
 use serde::Deserialize;
 use uuid::Uuid;
-
-use super::model::{Todo,Db};
+use crate::state::AppState;
+use super::model::Todo;
 
 
 // The query parameters for todos index
@@ -33,19 +35,12 @@ pub struct Pagination {
 }
 
 pub async fn todos_index(
-    pagination: Option<Query<Pagination>>,
-    State(db): State<Db>,
+    _pagination: Option<Query<Pagination>>,
+    State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let todos = db.read().unwrap();
+    // let Query(pagination) = pagination.unwrap_or_default();
 
-    let Query(pagination) = pagination.unwrap_or_default();
-
-    let todos = todos
-        .values()
-        .skip(pagination.offset.unwrap_or(0))
-        .take(pagination.limit.unwrap_or(usize::MAX))
-        .cloned()
-        .collect::<Vec<_>>();
+    let todos = state.todo_repo.list();
 
     Json(todos)
 }
@@ -55,14 +50,16 @@ pub struct CreateTodo {
     text: String,
 }
 
-pub async fn todos_create(State(db): State<Db>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
+pub async fn todos_create(State(state): State<AppState>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
     let todo = Todo {
         id: Uuid::new_v4(),
         text: input.text,
-        completed: false,
+        completed_at: None,
+        created_at: Utc::now().naive_utc(),
+        updated_at: Utc::now().naive_utc(),
     };
 
-    db.write().unwrap().insert(todo.id, todo.clone());
+    state.todo_db.write().unwrap().insert(todo.id, todo.clone());
 
     (StatusCode::CREATED, Json(todo))
 }
@@ -75,10 +72,10 @@ pub struct UpdateTodo {
 
 pub async fn todos_update(
     Path(id): Path<Uuid>,
-    State(db): State<Db>,
+    State(state): State<AppState>,
     Json(input): Json<UpdateTodo>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let mut todo = db
+    let mut todo = state.todo_db
         .read()
         .unwrap()
         .get(&id)
@@ -89,17 +86,17 @@ pub async fn todos_update(
         todo.text = text;
     }
 
-    if let Some(completed) = input.completed {
-        todo.completed = completed;
+    if input.completed.is_some() {
+        todo.completed_at = Some(Utc::now().naive_utc());
     }
 
-    db.write().unwrap().insert(todo.id, todo.clone());
+    state.todo_db.write().unwrap().insert(todo.id, todo.clone());
 
     Ok(Json(todo))
 }
 
-pub async fn todos_delete(Path(id): Path<Uuid>, State(db): State<Db>) -> impl IntoResponse {
-    if db.write().unwrap().remove(&id).is_some() {
+pub async fn todos_delete(Path(id): Path<Uuid>, State(state): State<AppState>) -> impl IntoResponse {
+    if state.todo_db.write().unwrap().remove(&id).is_some() {
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
