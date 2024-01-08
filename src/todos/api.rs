@@ -1,26 +1,10 @@
-//! Provides a RESTful web server managing some Todos.
-//!
-//! API will be:
-//!
-//! - `GET /todos`: return a JSON list of Todos.
-//! - `POST /todos`: create a new Todo.
-//! - `PATCH /todos/:id`: update a specific Todo.
-//! - `DELETE /todos/:id`: delete a specific Todo.
-//!
-//! Run with
-//!
-//! ```not_rust
-//! cargo run -p example-todos
-//! ```
-
-
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
-use chrono::{Utc};
+use chrono::Utc;
 use serde::Deserialize;
 use uuid::Uuid;
 use crate::state::AppState;
@@ -45,13 +29,22 @@ pub async fn todos_index(
     Json(todos)
 }
 
+pub async fn todos_get(
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let todo = state.todo_repo.get(id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    Ok(Json(todo))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateTodo {
     text: String,
 }
 
 pub async fn todos_create(State(state): State<AppState>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
-    let todo = Todo {
+    let mut todo = Todo {
         id: Uuid::new_v4(),
         text: input.text,
         completed_at: None,
@@ -59,7 +52,7 @@ pub async fn todos_create(State(state): State<AppState>, Json(input): Json<Creat
         updated_at: Utc::now().naive_utc(),
     };
 
-    state.todo_db.write().unwrap().insert(todo.id, todo.clone());
+    todo = state.todo_repo.create(&todo);
 
     (StatusCode::CREATED, Json(todo))
 }
@@ -75,31 +68,30 @@ pub async fn todos_update(
     State(state): State<AppState>,
     Json(input): Json<UpdateTodo>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let mut todo = state.todo_db
-        .read()
-        .unwrap()
-        .get(&id)
-        .cloned()
+    let mut todo = state.todo_repo.get(id)
         .ok_or(StatusCode::NOT_FOUND)?;
 
     if let Some(text) = input.text {
         todo.text = text;
     }
 
-    if input.completed.is_some() {
-        todo.completed_at = Some(Utc::now().naive_utc());
+    if let Some(completed) = input.completed {
+        if completed {
+            todo.completed_at = Some(Utc::now().naive_utc());
+        } else {
+            todo.completed_at = None
+        }
     }
 
-    state.todo_db.write().unwrap().insert(todo.id, todo.clone());
+    todo.updated_at = Utc::now().naive_utc();
+
+    state.todo_repo.update(&todo);
 
     Ok(Json(todo))
 }
 
 pub async fn todos_delete(Path(id): Path<Uuid>, State(state): State<AppState>) -> impl IntoResponse {
-    if state.todo_db.write().unwrap().remove(&id).is_some() {
-        StatusCode::NO_CONTENT
-    } else {
-        StatusCode::NOT_FOUND
-    }
+    state.todo_repo.delete(id);
+    StatusCode::NO_CONTENT
 }
 

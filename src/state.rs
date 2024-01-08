@@ -1,7 +1,6 @@
-use crate::todos::{model::Db, repo::TodoRepo};
+use crate::todos::repo::TodoRepo;
 
 #[derive(Clone)]
 pub struct AppState {
     pub todo_repo: TodoRepo,
-    pub todo_db: Db,
 }

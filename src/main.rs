@@ -18,14 +18,12 @@ use std::time::Duration;
 use axum::{
     error_handling::HandleErrorLayer,
     http::StatusCode,
-    routing::{get, patch}, Router,
+    routing::get, Router,
 };
 use rust_todos::common::db;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-use crate::todos::model::Db;
 
 mod state;
 mod todos;
@@ -43,12 +41,19 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = state::AppState{todo_repo, todo_db: Db::default()};
+    let state = state::AppState{todo_repo};
 
     // Compose the routes
     let app = Router::new()
-        .route("/todos", get(todos::api::todos_index).post(todos::api::todos_create))
-        .route("/todos/:id", patch(todos::api::todos_update).delete(todos::api::todos_delete))
+        .route("/todos",
+            get(todos::api::todos_index)
+            .post(todos::api::todos_create)
+        )
+        .route("/todos/:id", 
+            get(todos::api::todos_get)
+            .patch(todos::api::todos_update)
+            .delete(todos::api::todos_delete)
+        )
         // Add middleware to all routes
         .layer(
             ServiceBuilder::new()
