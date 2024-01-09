@@ -6,24 +6,23 @@ use axum::{
 };
 use chrono::Utc;
 use uuid::Uuid;
-use crate::state::AppState;
-use super::model::{Todo, TodoListQuery};
+use super::{model::{Todo, TodoListQuery}, repo::TodoRepo};
 use serde::Deserialize;
 
 pub async fn todos_index(
     query: Option<Query<TodoListQuery>>,
-    State(state): State<AppState>,
+    State(todo_repo): State<TodoRepo>,
 ) -> impl IntoResponse {
     let Query(query) = query.unwrap_or_default();
-    let todos = state.todo_repo.list(&query);
+    let todos = todo_repo.list(&query);
     Json(todos)
 }
 
 pub async fn todos_get(
     Path(id): Path<Uuid>,
-    State(state): State<AppState>,
+    State(todo_repo): State<TodoRepo>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let todo = state.todo_repo.get(id)
+    let todo = todo_repo.get(id)
         .ok_or(StatusCode::NOT_FOUND)?;
     Ok(Json(todo))
 }
@@ -33,7 +32,7 @@ pub struct CreateTodo {
     text: String,
 }
 
-pub async fn todos_create(State(state): State<AppState>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
+pub async fn todos_create(State(todo_repo): State<TodoRepo>, Json(input): Json<CreateTodo>) -> impl IntoResponse {
     let mut todo = Todo {
         id: Uuid::new_v4(),
         text: input.text,
@@ -42,7 +41,7 @@ pub async fn todos_create(State(state): State<AppState>, Json(input): Json<Creat
         updated_at: Utc::now().naive_utc(),
     };
 
-    todo = state.todo_repo.create(&todo);
+    todo = todo_repo.create(&todo);
 
     (StatusCode::CREATED, Json(todo))
 }
@@ -55,10 +54,10 @@ pub struct UpdateTodo {
 
 pub async fn todos_update(
     Path(id): Path<Uuid>,
-    State(state): State<AppState>,
+    State(todo_repo): State<TodoRepo>,
     Json(input): Json<UpdateTodo>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let mut todo = state.todo_repo.get(id)
+    let mut todo = todo_repo.get(id)
         .ok_or(StatusCode::NOT_FOUND)?;
 
     if let Some(text) = input.text {
@@ -75,15 +74,15 @@ pub async fn todos_update(
 
     todo.updated_at = Utc::now().naive_utc();
 
-    state.todo_repo.update(&todo);
+    todo_repo.update(&todo);
     Ok(Json(todo))
 }
 
-pub async fn todos_delete(Path(id): Path<Uuid>, State(state): State<AppState>) -> impl IntoResponse {
-    if state.todo_repo.get(id).is_none() {
+pub async fn todos_delete(Path(id): Path<Uuid>, State(todo_repo): State<TodoRepo>) -> impl IntoResponse {
+    if todo_repo.get(id).is_none() {
         return StatusCode::NOT_FOUND
     }
-    state.todo_repo.delete(id);
+    todo_repo.delete(id);
     StatusCode::NO_CONTENT
 }
 

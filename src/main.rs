@@ -14,15 +14,13 @@ use axum::{
     http::StatusCode,
     routing::get, Router,
 };
-use rust_todos::common::db;
+use rust_todos::{common::db, state::AppState};
+use rust_todos::todos;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use dotenvy::dotenv;
 use std::env;
-
-mod state;
-mod todos;
 
 #[tokio::main]
 async fn main() {
@@ -30,8 +28,8 @@ async fn main() {
 
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    let dbpool = db::connect::get_connection_pool(db_url);
-    let todo_repo = todos::repo::TodoRepo::new(dbpool);
+    let db_pool = db::connect::get_connection_pool(db_url);
+    let todo_repo = todos::repo::TodoRepo::new(db_pool);
 
     tracing_subscriber::registry()
         .with(
@@ -41,7 +39,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = state::AppState{todo_repo};
+    let state = AppState{todo_repo};
 
     // Compose the routes
     let app = Router::new()
