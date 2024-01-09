@@ -4,7 +4,7 @@ This project is a quick example of how to implement CRUD todo list APIs in Rust 
 - [axum](https://github.com/tokio-rs/axum) for API server
 - [diesel](https://github.com/diesel-rs/diesel) for database ORM
 
-Some boilerplace code is taken from [Todos API example by axum](https://github.com/tokio-rs/axum/tree/main/examples/todos)
+Some boilerplate code is taken from [Todos API example by axum](https://github.com/tokio-rs/axum/tree/main/examples/todos)
 then integrate with `diesel` to perform actual database queries, which is Postgres in this example.
 
 *Disclaimer: The main purpose of this project is for my own rust learning, but I hope it might be beneficial for other beginners also.*
