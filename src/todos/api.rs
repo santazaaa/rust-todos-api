@@ -5,27 +5,17 @@ use axum::{
     Json,
 };
 use chrono::Utc;
-use serde::Deserialize;
 use uuid::Uuid;
 use crate::state::AppState;
-use super::model::Todo;
-
-
-// The query parameters for todos index
-#[derive(Debug, Deserialize, Default)]
-pub struct Pagination {
-    pub offset: Option<usize>,
-    pub limit: Option<usize>,
-}
+use super::model::{Todo, TodoListQuery};
+use serde::Deserialize;
 
 pub async fn todos_index(
-    _pagination: Option<Query<Pagination>>,
+    query: Option<Query<TodoListQuery>>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    // let Query(pagination) = pagination.unwrap_or_default();
-
-    let todos = state.todo_repo.list();
-
+    let Query(query) = query.unwrap_or_default();
+    let todos = state.todo_repo.list(&query);
     Json(todos)
 }
 
@@ -86,11 +76,13 @@ pub async fn todos_update(
     todo.updated_at = Utc::now().naive_utc();
 
     state.todo_repo.update(&todo);
-
     Ok(Json(todo))
 }
 
 pub async fn todos_delete(Path(id): Path<Uuid>, State(state): State<AppState>) -> impl IntoResponse {
+    if state.todo_repo.get(id).is_none() {
+        return StatusCode::NOT_FOUND
+    }
     state.todo_repo.delete(id);
     StatusCode::NO_CONTENT
 }

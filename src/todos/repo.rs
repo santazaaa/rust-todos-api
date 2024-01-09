@@ -1,8 +1,9 @@
-use super::model::Todo;
+use super::model::{Todo, TodoListQuery};
 use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
+use rust_todos::common::config::DEFAULT_PAGINATION_LIMIT;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -12,7 +13,7 @@ pub struct TodoRepo {
 
 impl TodoRepo {
     pub fn new(dbpool: Pool<ConnectionManager<PgConnection>>) -> Self {
-        return TodoRepo { dbpool };
+        TodoRepo { dbpool }
     }
 
     pub fn create(&self, todo: &Todo) -> Todo {
@@ -40,11 +41,13 @@ impl TodoRepo {
         }
     }
 
-    pub fn list(&self) -> Vec<Todo> {
+    pub fn list(&self, query: &TodoListQuery) -> Vec<Todo> {
         use crate::db::schema::todos::dsl::todos;
         let conn = &mut self.dbpool.get().unwrap();
         let results = todos
             .select(Todo::as_select())
+            .limit(query.limit.unwrap_or(DEFAULT_PAGINATION_LIMIT) as i64)
+            .offset(query.offset.unwrap_or(0) as i64)
             .load(conn)
             .expect("Error loading todos");
         return results;
