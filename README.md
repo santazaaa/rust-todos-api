@@ -30,4 +30,5 @@ make dev
 - [ ] Add `service` layer. API handlers should not call repositories directly.
 - [ ] Add `traits` to abstract out repositories and services
 - [ ] Add `DTO` models
+- [ ] Add Github Actions for linting and testing
 
