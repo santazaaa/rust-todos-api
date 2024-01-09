@@ -9,7 +9,6 @@
 //! - `DELETE /todos/:id`: delete a specific Todo.
 
 use std::time::Duration;
-
 use axum::{
     error_handling::HandleErrorLayer,
     http::StatusCode,
@@ -19,13 +18,19 @@ use rust_todos::common::db;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use dotenvy::dotenv;
+use std::env;
 
 mod state;
 mod todos;
 
 #[tokio::main]
 async fn main() {
-    let dbpool = db::connect::get_connection_pool();
+    dotenv().ok();
+
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+    let dbpool = db::connect::get_connection_pool(db_url);
     let todo_repo = todos::repo::TodoRepo::new(dbpool);
 
     tracing_subscriber::registry()
