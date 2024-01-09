@@ -69,7 +69,7 @@ pub async fn todos_update(
         if completed {
             todo.completed_at = Some(Utc::now().naive_utc());
         } else {
-            todo.completed_at = None
+            todo.completed_at = None;
         }
     }
 

@@ -58,6 +58,7 @@ impl TodoRepo {
         let conn = &mut self.dbpool.get().unwrap();
         let _ = diesel::update(todos.find(todo.id))
             .set((
+                text.eq(todo.text.clone()),
                 completed_at.eq(todo.completed_at),
                 updated_at.eq(todo.updated_at),
             ))
