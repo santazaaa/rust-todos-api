@@ -24,3 +24,10 @@ make migrate
 # Build and serve APIs at port 3000
 make dev
 ```
+
+## Improvement Checklist:
+- [ ] Write tests
+- [ ] Add `service` layer. API handlers should not call repositories directly.
+- [ ] Add `traits` to abstract out repositories and services
+- [ ] Add `DTO` models
+
